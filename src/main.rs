@@ -44,13 +44,12 @@ struct Config {
 
 }
 fn run(config : &Config) -> Result<(),SplitErrors> {
-    let mut file_number: u32 = 0;
-    let mut cursor: u32 = 0;
     let mut is_empty = true;
 
+    let mut file_number: u32 = 0;
+    let mut cursor: u32 = 0;
+
     let file = File::open(&config.file_name)?;
-
-
     // default buffer reader is 8KB
     fn create_new_file(file_number: u32, additional_suffix: &str) -> std::io::Result<File> {
         File::create(format!("part{}{}", file_number, additional_suffix))
