@@ -1,6 +1,7 @@
 mod models;
 
 use std::env::Args;
+use std::fmt::format;
 use models::SplitErrors;
 use clap::Parser;
 
@@ -10,28 +11,56 @@ use std::process;
 
 fn main() {
     let config = Config::parse();
-    run(&config).unwrap_or_else(|splitError| {
-        match splitError {
-            SplitErrors::FILE_NOT_FOUND => {
-                println!("File {} not found",&config.file_name)
-            }
-            SplitErrors::EMPTY_FILE => {
-                println!("File {} is empty",&config.file_name)
-            }
-            SplitErrors::InternalError(err) => {
-                eprintln!("Error splitting file:  {:?}",err)
-            }
-        }
-    })
+
+   // println!("{:?}",config);
+    validate_config(config).expect("failure");
+    // run(&config).unwrap_or_else(|splitError| {
+    //     match splitError {
+    //         SplitErrors::FILE_NOT_FOUND => {
+    //             println!("File {} not found",&config.file_name)
+    //         }
+    //         SplitErrors::EMPTY_FILE => {
+    //             println!("File {} is empty",&config.file_name)
+    //         }
+    //         SplitErrors::InternalError(err) => {
+    //             eprintln!("Error splitting file:  {:?}",err)
+    //         }
+    //     }
+    // })
 }
 
+
+fn validate_config(config : Config) -> Result<Config,SplitErrors> {
+    // cannot supply l and b args
+    if let (Some(l), Some(b)) = (config.line_Length.as_ref(),config.byte_cpunt.as_ref()) {
+        return Err(SplitErrors::InvalidConfig(format!("Cannot supply both line length: {} and byte count : {} ",l,b)))
+    }
+    // byte length args must end with a k or b, and other stuff must be a number
+    if let Some(byte_count) = config.byte_cpunt.as_ref() {
+        let char_vec : Vec<char>= byte_count.chars().collect();
+        let byte_size = char_vec[char_vec.len() - 1];
+        match byte_size {
+            'k' | 'K' | 'm' | 'M' =>  {
+                let size = &char_vec[..char_vec.len() - 1];
+                if !size.iter().all(|c| c.is_numeric()) {
+                    return Err(SplitErrors::InvalidConfig(format!("Invalid Byte count {} ",String::from_iter(size))));
+                }
+            },
+            other => {
+                return Err(SplitErrors::InvalidConfig(format!("Invalid Byte count suffix {}",other)));
+            }
+        }
+    }
+
+    Ok(config)
+}
 /// Split A file into smaller files
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
 struct Config {
     /// Create smaller files of l lines in length
-    #[clap(short, long, default_value_t = 1000)]
-    line_Length : u32,
+    #[clap(short, long)]
+    line_Length : Option<u32>,
 
     /// additional suffix for files
     #[clap(long, default_value = "")]
@@ -40,6 +69,9 @@ struct Config {
     /// Name of file to be split
     file_name : String,
 
+    /// Name of file to be split
+    #[clap(short,long)]
+    byte_count : Option<String>
 
 
 }
@@ -70,7 +102,7 @@ fn run(config : &Config) -> Result<(),SplitErrors> {
     for line in reader.lines(){
         is_empty = false;
 
-        if cursor == config.line_Length {
+        if cursor == config.line_Length.unwrap() {
             // create new file
             file_number += 1;
             cursor = 0;
