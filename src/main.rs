@@ -44,19 +44,18 @@ fn validate_config(config : Config) -> Result<SplitOptions,SplitErrors> {
         let char_vec : Vec<char>= byte_count.to_lowercase().chars().collect();
         let byte_size_unit = char_vec[char_vec.len() - 1];
         let size = &char_vec[..char_vec.len() - 1];
-        if !size.iter().all(|c| c.is_numeric()) {
-            return Err(SplitErrors::InvalidConfig(format!("Invalid Byte count {} ",String::from_iter(size))));
-        }
 
         match ByteUnit::parse(byte_size_unit) {
             Ok(byte_unit) => {
 
-                match String::from_iter(size).parse::<u64>() {
+                let byte_count_string = String::from_iter(size);
+
+
+                match byte_count_string.parse::<u64>() {
                     Ok(byte_length) => {
                         return Ok(
                             SplitByBytes {
                                 byte_length,
-                                //byte_length: u64::from_str(&String::from_iter(size)),
                                 additional_suffix: config.additional_suffix,
                                 file_name: config.file_name,
                                 byte_unit
@@ -64,7 +63,7 @@ fn validate_config(config : Config) -> Result<SplitOptions,SplitErrors> {
                         )
                     },
                     Err(e) => {
-                        return Err(SplitErrors::InvalidConfig(e.to_string()))
+                        return Err(SplitErrors::InvalidConfig(format!("Cannot parse {} as a number",byte_count_string)))
                     }
                 }
             },
@@ -72,17 +71,6 @@ fn validate_config(config : Config) -> Result<SplitOptions,SplitErrors> {
                 return Err(SplitErrors::InvalidConfig(e))
             }
         }
-        // match byte_size_unit {
-        //    p @  'k'  | 'm' =>  {
-        //         let size = &char_vec[..char_vec.len() - 1];
-        //         if !size.iter().all(|c| c.is_numeric()) {
-        //             return Err(SplitErrors::InvalidConfig(format!("Invalid Byte count {} ",String::from_iter(size))));
-        //         }
-        //     },
-        //     other => {
-        //         return Err(SplitErrors::InvalidConfig(format!("Invalid Byte count suffix {}",other)));
-        //     }
-        // }
     } else {
         Ok(SplitOptions::SplitByLines {
             line_length : config.line_Length.unwrap(),
@@ -90,8 +78,10 @@ fn validate_config(config : Config) -> Result<SplitOptions,SplitErrors> {
             file_name : config.file_name
         })
     }
+}
 
-
+fn create_new_file(file_number: u32, additional_suffix: &str) -> std::io::Result<File> {
+    File::create(format!("part{}{}", file_number, additional_suffix))
 }
 
 fn run(config : &Config) -> Result<(),SplitErrors> {
@@ -101,11 +91,8 @@ fn run(config : &Config) -> Result<(),SplitErrors> {
     let mut cursor: u32 = 0;
 
     let file = File::open(&config.file_name)?;
-    // default buffer reader is 8KB
-    fn create_new_file(file_number: u32, additional_suffix: &str) -> std::io::Result<File> {
-        File::create(format!("part{}{}", file_number, additional_suffix))
-    }
 
+    // default buffer reader is 8KB
     let mut reader = BufReader::new(file);
     let mut writer = BufWriter::new(create_new_file(file_number, &config.additional_suffix)?);
 
@@ -160,7 +147,6 @@ fn run(config : &Config) -> Result<(),SplitErrors> {
                 return create_split_error("Cannot Write to buffer",e)
             }
         }
-
     }
 
     if is_empty {
