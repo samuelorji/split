@@ -6,7 +6,19 @@ Ended up being faster than the original
 
 
 ### USAGE 
+build in release mode with 
 ```aidl
+cargo build --release
+```
+
+### Examples
+```aidl
+split -b 10k batch.txt --additional-suffix=.csv
+
+split -l 100000 batch.csv
+```
+```aidl
+split 0.1.0
 Split A file into smaller files
 
 USAGE:
@@ -16,15 +28,9 @@ ARGS:
     <FILE_NAME>    Name of file to be split
 
 OPTIONS:
-        --additional-suffix <ADDITIONAL_SUFFIX>
-           suffix for newly created files [default: ]
-
-    -h, --help
-            Print help information
-
-    -l, --line-length <LINE_LENGTH>
-            Create smaller files of l lines in length [default: 1000]
-
-    -V, --version
-            Print version information
+        --additional-suffix <ADDITIONAL_SUFFIX>    additional suffix for files [default: ]
+    -b, --byte-count <BYTE_COUNT>                  size of smaller files
+    -h, --help                                     Print help information
+    -l, --line-length <LINE_LENGTH>                length of smaller files
+    -V, --version                                  Print version information
 ```

@@ -39,65 +39,6 @@ fn print_error(error : SplitErrors, file_name: String) -> () {
 
 fn call_appropriate_function(splitOptions : SplitOptions) -> Result<(),SplitErrors> {
     match splitOptions {
-        p @ SplitOptions::SplitByLines { .. } => {
-            split_by_lines(p)
-        }
-        p @ SplitOptions::SplitByBytes { .. } => {
-            split_by_bytes(p)
-        }
-    }
-}
-
-fn validate_and_parse(config : Config) -> Result<SplitOptions,SplitErrors> {
-    // cannot supply l and b args
-    if let (Some(l), Some(b)) = (config.line_Length.as_ref(),config.byte_count.as_ref()) {
-        return Err(SplitErrors::InvalidConfig(format!("Cannot supply both line length: {} and byte count : {} ",l,b)))
-    }
-    // byte length args must end with a k or b, and other stuff must be a number
-    if let Some(byte_count) = config.byte_count.as_ref() {
-        let char_vec : Vec<char>= byte_count.to_lowercase().chars().collect();
-        let byte_size_unit = char_vec[char_vec.len() - 1];
-        let size = &char_vec[..char_vec.len() - 1];
-
-        return match ByteUnit::parse(byte_size_unit) {
-            Ok(byte_unit) => {
-                let byte_count_string = String::from_iter(size);
-                match byte_count_string.parse::<u64>() {
-                    Ok(byte_length) => {
-                        Ok(
-                            SplitByBytes {
-                                byte_length,
-                                additional_suffix: config.additional_suffix,
-                                file_name: config.file_name,
-                                byte_unit
-                            }
-                        )
-                    },
-                    Err(e) => {
-                        Err(SplitErrors::InvalidConfig(format!("Cannot parse {} as a number", byte_count_string)))
-                    }
-                }
-            },
-            Err(e) => {
-                Err(SplitErrors::InvalidConfig(e))
-            }
-        }
-    } else {
-        Ok(SplitByLines {
-            line_length : config.line_Length.unwrap(),
-            additional_suffix: config.additional_suffix,
-            file_name : config.file_name
-        })
-    }
-}
-
-fn create_new_file(file_number: u32, additional_suffix: &str) -> std::io::Result<File> {
-    File::create(format!("part{}{}", file_number, additional_suffix))
-}
-
-fn split_by_lines(conf: SplitOptions) -> Result<(),SplitErrors> {
-
-    match conf {
         SplitOptions::SplitByLines{ line_length, additional_suffix, file_name} => {
             let mut is_empty = true;
 
@@ -163,17 +104,8 @@ fn split_by_lines(conf: SplitOptions) -> Result<(),SplitErrors> {
             } else {
                 Ok(())
             }
-        }
-        _ => {
-            Err(SplitErrors::InternalError(format!("Calling {:?} on a split by lines method",conf)))
-        }
-    }
-}
-
-fn split_by_bytes(conf: SplitOptions) -> Result<(),SplitErrors> {
-    match conf {
+        },
         SplitOptions::SplitByBytes { byte_length, additional_suffix,file_name, byte_unit } => {
-
             let mut is_empty = true;
             let mut file_number: u32 = 0;
             let mut cursor: u32 = 0;
@@ -199,20 +131,20 @@ fn split_by_bytes(conf: SplitOptions) -> Result<(),SplitErrors> {
                     while nread < buffer.len() {
                         match reader.read(&mut buffer[nread..]) {
                             Ok(0) =>  {
-                               if is_empty {
-                                   return Err(SplitErrors::EMPTY_FILE);
-                               } else {
-                                   if reached_EOF {
-                                       return Ok(())
-                                   } else {
-                                       reached_EOF = true;
-                                       break;
-                                   }
-                               }
+                                if is_empty {
+                                    return Err(SplitErrors::EMPTY_FILE);
+                                } else {
+                                    if reached_EOF {
+                                        return Ok(())
+                                    } else {
+                                        reached_EOF = true;
+                                        break;
+                                    }
+                                }
                             },
                             Ok(n) => {
                                 is_empty = false;
-                               nread += n ;
+                                nread += n ;
                             },
                             Err(e) => {
                                 return Err(SplitErrors::InternalError(format!("Cannot read file : {:?}", e)));
@@ -249,16 +181,58 @@ fn split_by_bytes(conf: SplitOptions) -> Result<(),SplitErrors> {
             } else {
                 return Err(SplitErrors::InvalidConfig("Byte count too large".to_string()))
             }
-        },
-       _ => {
-            return Err(SplitErrors::InternalError(format!("Calling {:?} on a split by bytes method",conf)))
         }
 
     }
 
-    Ok(())
 }
 
+fn validate_and_parse(config : Config) -> Result<SplitOptions,SplitErrors> {
+    // cannot supply l and b args
+    if let (Some(l), Some(b)) = (config.line_Length.as_ref(),config.byte_count.as_ref()) {
+        return Err(SplitErrors::InvalidConfig(format!("Cannot supply both line length: {} and byte count : {} ",l,b)))
+    }
+    // byte length args must end with a k or b, and other stuff must be a number
+    if let Some(byte_count) = config.byte_count.as_ref() {
+        let char_vec : Vec<char>= byte_count.to_lowercase().chars().collect();
+        let byte_size_unit = char_vec[char_vec.len() - 1];
+        let size = &char_vec[..char_vec.len() - 1];
+
+        return match ByteUnit::parse(byte_size_unit) {
+            Ok(byte_unit) => {
+                let byte_count_string = String::from_iter(size);
+                match byte_count_string.parse::<u64>() {
+                    Ok(byte_length) => {
+                        Ok(
+                            SplitByBytes {
+                                byte_length,
+                                additional_suffix: config.additional_suffix,
+                                file_name: config.file_name,
+                                byte_unit
+                            }
+                        )
+                    },
+                    Err(e) => {
+                        Err(SplitErrors::InvalidConfig(format!("Cannot parse {} as a number", byte_count_string)))
+                    }
+                }
+            },
+            Err(e) => {
+                Err(SplitErrors::InvalidConfig(e))
+            }
+        }
+    } else {
+        Ok(SplitByLines {
+            line_length : config.line_Length.unwrap(),
+            additional_suffix: config.additional_suffix,
+            file_name : config.file_name
+        })
+    }
+}
+
+fn create_new_file(file_number: u32, additional_suffix: &str) -> std::io::Result<File> {
+    File::create(format!("part{}{}", file_number, additional_suffix))
+}
 
 fn create_split_error(error_msg : &str , error : Error) -> Result<(),SplitErrors> {
     Err(SplitErrors::InternalError(format!("{}:{:?}",error_msg, error)))

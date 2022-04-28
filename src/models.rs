@@ -11,7 +11,7 @@ pub enum SplitErrors {
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
 pub struct Config {
-    /// Create smaller files of l lines in length
+    /// length of smaller files
     #[clap(short, long)]
     pub line_Length : Option<u32>,
 
@@ -22,7 +22,7 @@ pub struct Config {
     /// Name of file to be split
     pub file_name : String,
 
-    /// Name of file to be split
+    /// size of smaller files
     #[clap(short,long)]
     pub byte_count : Option<String>
 
