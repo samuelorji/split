@@ -7,17 +7,17 @@ Ended up being faster than the original
 
 ### USAGE 
 build in release mode with 
-```aidl
+```bash
 cargo build --release
 ```
 
 ### Examples
-```aidl
+```bash
 split -b 10k batch.txt --additional-suffix=.csv
 
 split -l 100000 batch.csv
 ```
-```aidl
+```bash
 split 0.1.0
 Split A file into smaller files
 
